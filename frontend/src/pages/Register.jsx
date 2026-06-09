@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { User, Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from '../components/LanguageSelector';
 
 const sriLankaData = {
   "Western": ["Colombo", "Gampaha", "Kalutara"],
@@ -16,6 +18,7 @@ const sriLankaData = {
 };
 
 const Register = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     role: 'USER',
     fullName: '',
@@ -106,6 +109,9 @@ const Register = () => {
 
   return (
     <div className="auth-container" style={{ padding: '2rem 1rem' }}>
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <LanguageSelector />
+      </div>
       <div className="auth-card glass-panel" style={{maxWidth: '650px', padding: '2rem'}}>
         
         <div style={{display: 'flex', justifyContent: 'center', marginBottom: '1.5rem'}}>
@@ -120,7 +126,7 @@ const Register = () => {
           </div>
         </div>
         
-        <h1 className="auth-title" style={{fontSize: '1.75rem'}}>Create Account</h1>
+        <h1 className="auth-title" style={{fontSize: '1.75rem'}}>{t('register_title')}</h1>
         
         {/* Role Selector Tabs */}
         <div style={{display: 'flex', gap: '0.5rem', marginBottom: '2rem', marginTop: '1rem'}}>
@@ -134,7 +140,7 @@ const Register = () => {
               border: formData.role === 'USER' ? '1px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.1)'
             }}
           >
-            <User size={20} /> Citizen User
+            <User size={20} /> {t('citizen')}
           </button>
           <button 
             type="button"
@@ -146,7 +152,7 @@ const Register = () => {
               border: formData.role === 'ADMIN' ? '1px solid var(--secondary-color)' : '1px solid rgba(255,255,255,0.1)'
             }}
           >
-            <Shield size={20} /> System Administrator
+            <Shield size={20} /> {t('police')}
           </button>
         </div>
         
@@ -154,17 +160,17 @@ const Register = () => {
           {/* SHARED FIELDS */}
           <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
             <div className="input-group">
-              <label htmlFor="fullName">Full Name</label>
+              <label htmlFor="fullName">{t('full_name')}</label>
               <input type="text" id="fullName" className="input-field" placeholder="John Doe" value={formData.fullName} onChange={handleChange} />
             </div>
 
             <div className="input-group">
-              <label htmlFor="email">Email Address</label>
+              <label htmlFor="email">{t('email')}</label>
               <input type="email" id="email" className="input-field" placeholder="john@example.com" value={formData.email} onChange={handleChange} />
             </div>
 
             <div className="input-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">{t('password')}</label>
               <input type="password" id="password" className="input-field" placeholder="Create password" value={formData.password} onChange={handleChange} />
             </div>
             
@@ -174,15 +180,15 @@ const Register = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="gender">Gender</label>
+              <label htmlFor="gender">{t('gender')}</label>
               <select id="gender" className="input-field" style={{cursor: 'pointer'}} value={formData.gender} onChange={handleChange}>
-                <option value="Male" style={{background: 'var(--background-dark)'}}>Male</option>
-                <option value="Female" style={{background: 'var(--background-dark)'}}>Female</option>
+                <option value="Male" style={{background: 'var(--background-dark)'}}>{t('male')}</option>
+                <option value="Female" style={{background: 'var(--background-dark)'}}>{t('female')}</option>
               </select>
             </div>
 
             <div className="input-group">
-              <label htmlFor="age">Age</label>
+              <label htmlFor="age">{t('age')}</label>
               <input type="text" inputMode="numeric" pattern="[0-9]*" id="age" className="input-field" placeholder="Age (e.g. 25)" value={formData.age} onChange={(e) => {
                 // Only allow digits to be typed
                 const val = e.target.value;
@@ -199,13 +205,13 @@ const Register = () => {
           {formData.role === 'USER' && (
             <>
               <div className="input-group">
-                <label htmlFor="address">Address</label>
+                <label htmlFor="address">{t('address')}</label>
                 <input type="text" id="address" className="input-field" placeholder="123 Main Street, City" value={formData.address} onChange={handleChange} />
               </div>
 
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                 <div className="input-group">
-                  <label htmlFor="province">Province</label>
+                  <label htmlFor="province">{t('province')}</label>
                   <select id="province" className="input-field" style={{cursor: 'pointer'}} value={formData.province} onChange={handleProvinceChange}>
                     {Object.keys(sriLankaData).map(prov => (
                       <option key={prov} value={prov} style={{background: 'var(--background-dark)'}}>{prov}</option>
@@ -214,7 +220,7 @@ const Register = () => {
                 </div>
 
                 <div className="input-group">
-                  <label htmlFor="district">District</label>
+                  <label htmlFor="district">{t('district')}</label>
                   <select id="district" className="input-field" style={{cursor: 'pointer'}} value={formData.district} onChange={handleChange}>
                     {sriLankaData[formData.province].map(dist => (
                       <option key={dist} value={dist} style={{background: 'var(--background-dark)'}}>{dist}</option>
@@ -223,12 +229,12 @@ const Register = () => {
                 </div>
 
                 <div className="input-group">
-                  <label htmlFor="nic">NIC Number</label>
+                  <label htmlFor="nic">{t('nic')}</label>
                   <input type="text" id="nic" className="input-field" placeholder="199XXXXXXXXX or 99XXXXXXXV" value={formData.nic} onChange={handleChange} />
                 </div>
 
                 <div className="input-group">
-                  <label htmlFor="telephone">Telephone Number</label>
+                  <label htmlFor="telephone">{t('telephone')}</label>
                   <input type="tel" id="telephone" className="input-field" placeholder="07XXXXXXXX" value={formData.telephone} onChange={handleChange} />
                 </div>
               </div>
@@ -239,7 +245,7 @@ const Register = () => {
           {formData.role === 'ADMIN' && (
             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
               <div className="input-group">
-                <label htmlFor="province">Province</label>
+                <label htmlFor="province">{t('province')}</label>
                 <select id="province" className="input-field" style={{cursor: 'pointer'}} value={formData.province} onChange={handleProvinceChange}>
                   {Object.keys(sriLankaData).map(prov => (
                     <option key={prov} value={prov} style={{background: 'var(--background-dark)'}}>{prov}</option>
@@ -248,7 +254,7 @@ const Register = () => {
               </div>
 
               <div className="input-group">
-                <label htmlFor="district">District</label>
+                <label htmlFor="district">{t('district')}</label>
                 <select id="district" className="input-field" style={{cursor: 'pointer'}} value={formData.district} onChange={handleChange}>
                   {sriLankaData[formData.province].map(dist => (
                     <option key={dist} value={dist} style={{background: 'var(--background-dark)'}}>{dist}</option>
@@ -257,17 +263,17 @@ const Register = () => {
               </div>
 
               <div className="input-group">
-                <label htmlFor="policeId">Police ID (Badge Number)</label>
+                <label htmlFor="policeId">{t('police_id')}</label>
                 <input type="text" id="policeId" className="input-field" placeholder="PID-XXXX" value={formData.policeId} onChange={handleChange} />
               </div>
 
               <div className="input-group">
-                <label htmlFor="jobPosition">Job Position / Rank</label>
+                <label htmlFor="jobPosition">{t('job_position')}</label>
                 <input type="text" id="jobPosition" className="input-field" placeholder="E.g., Inspector, Sergeant" value={formData.jobPosition} onChange={handleChange} />
               </div>
 
               <div className="input-group" style={{gridColumn: '1 / span 2'}}>
-                <label htmlFor="workStation">Police Division / Station</label>
+                <label htmlFor="workStation">{t('work_station')}</label>
                 <input type="text" id="workStation" className="input-field" placeholder="E.g., Colombo Central Police Station" value={formData.workStation} onChange={handleChange} />
               </div>
             </div>
@@ -284,12 +290,12 @@ const Register = () => {
             }}
             disabled={isLoading}
           >
-            {isLoading ? 'Creating Account...' : `Register as ${formData.role === 'USER' ? 'Citizen' : 'Administrator'}`}
+            {isLoading ? t('loading') : t('register_btn')}
           </button>
         </form>
         
         <div style={{marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)'}}>
-          Already have an account? <Link to="/login" style={{fontWeight: '600'}}>Sign In</Link>
+          {t('have_account')} <Link to="/login" style={{fontWeight: '600'}}>{t('login_link')}</Link>
         </div>
       </div>
     </div>

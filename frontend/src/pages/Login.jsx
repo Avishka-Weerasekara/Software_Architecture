@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Car, ShieldAlert } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from '../components/LanguageSelector';
 
 const Login = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -35,6 +38,9 @@ const Login = () => {
 
   return (
     <div className="auth-container">
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <LanguageSelector />
+      </div>
       <div className="auth-card glass-panel">
         <div style={{display: 'flex', justifyContent: 'center', marginBottom: '1.5rem'}}>
           <div style={{
@@ -48,29 +54,29 @@ const Login = () => {
           </div>
         </div>
         
-        <h1 className="auth-title">Traffic Fine System</h1>
-        <p className="auth-subtitle">Sign in to your account</p>
+        <h1 className="auth-title">{t('app_title')}</h1>
+        <p className="auth-subtitle">{t('login_subtitle')}</p>
         
         <form onSubmit={handleSubmit}>
           <div className="input-group">
-            <label htmlFor="email">Email Address</label>
+            <label htmlFor="email">{t('email')}</label>
             <input 
               type="email" 
               id="email" 
               className="input-field" 
-              placeholder="Enter your email"
+              placeholder={t('email')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           
           <div className="input-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">{t('password')}</label>
             <input 
               type="password" 
               id="password" 
               className="input-field" 
-              placeholder="Enter your password"
+              placeholder={t('password')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -84,12 +90,12 @@ const Login = () => {
             style={{width: '100%', marginTop: '1rem'}}
             disabled={isLoading}
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? t('loading') : t('login_btn')}
           </button>
         </form>
         
         <div style={{marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)'}}>
-          Don't have an account? <Link to="/register" style={{fontWeight: '600'}}>Register now</Link>
+          {t('no_account')} <Link to="/register" style={{fontWeight: '600'}}>{t('signup_link')}</Link>
         </div>
       </div>
     </div>
