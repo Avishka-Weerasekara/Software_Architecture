@@ -9,10 +9,11 @@
 //
 // Adjust entity/repository names (Fine, Payment, etc.) to match your actual schema.
 
-package com.trafficfine.controller;
+package com.traffic.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.traffic.repository.FineRepository;
 
 import java.util.List;
 import java.util.Map;

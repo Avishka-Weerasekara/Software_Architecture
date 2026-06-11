@@ -47,6 +47,11 @@ const UserDashboard = () => {
 
   const handleProfileChange = (e) => setProfile({ ...profile, [e.target.id]: e.target.value });
 
+  const handlePayNow = (fine) => {
+    // Navigate to payment processing page with fine ID
+    navigate(`/payment-processing?fineId=${fine.id}`);
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -221,10 +226,22 @@ const UserDashboard = () => {
                           <div className={`fine-amount ${fine.status !== 'PENDING' ? 'paid' : ''}`} style={{ marginBottom: '0.5rem' }}>
                             LKR {fine.totalAmount.toLocaleString()}
                           </div>
-                          <button onClick={() => handlePrintSlip(fine)} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
-                            <Printer size={16} />
-                            {t('download_slip')}
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            {fine.status === 'PENDING' && (
+                              <button 
+                                onClick={() => handlePayNow(fine)} 
+                                className="btn btn-primary" 
+                                style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                              >
+                                <CreditCard size={16} />
+                                {t('pay_now')}
+                              </button>
+                            )}
+                            <button onClick={() => handlePrintSlip(fine)} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                              <Printer size={16} />
+                              {t('download_slip')}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

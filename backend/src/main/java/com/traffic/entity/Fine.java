@@ -51,6 +51,9 @@ public class Fine {
     @Column(nullable = false)
     private String status; // "PENDING", "PAID"
     
+    @Column(name = "last_payment_id")
+    private java.util.UUID lastPaymentId;
+    
     @Column(name = "bank_name")
     private String bankName;
     

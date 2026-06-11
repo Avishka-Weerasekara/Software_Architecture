@@ -83,3 +83,17 @@ backend/.env
 # Maven
 # =========================
 .mvn/timing.properties
+
+# Maven
+target/
+
+# Backend build output
+backend/target/
+
+# Frontend
+node_modules/
+dist/
+
+# Environment files
+.env
+.env.*

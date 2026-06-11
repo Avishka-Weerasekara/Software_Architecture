@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, CreditCard, ShieldCheck, User as UserIcon,
-  Search, Plus, Trash2, FileText, BarChart3, MapPin
+  Search, Plus, Trash2, FileText, BarChart3, MapPin, TrendingUp, CheckCircle, XCircle, RefreshCw
 } from 'lucide-react';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
@@ -46,6 +46,12 @@ const AdminDashboard = () => {
   // Monitoring states
   const [monitoring, setMonitoring] = useState({ districtCollections: [], categoryBreakdown: [] });
   const [monitoringLoading, setMonitoringLoading] = useState(true);
+
+  // Payment Analytics states
+  const [paymentAnalytics, setPaymentAnalytics] = useState({ totalRevenue: 0, successfulPayments: 0 });
+  const [recentPayments, setRecentPayments] = useState([]);
+  const [paymentAnalyticsLoading, setPaymentAnalyticsLoading] = useState(true);
+  const [refundingPaymentId, setRefundingPaymentId] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +96,29 @@ const AdminDashboard = () => {
       }
     };
     fetchMonitoring();
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'payments') return;
+
+    const fetchPaymentData = async () => {
+      setPaymentAnalyticsLoading(true);
+      try {
+        const [analyticsRes, recentRes] = await Promise.all([
+          api.get('/payment/admin/analytics'),
+          api.get('/payment/admin/recent?limit=10')
+        ]);
+        setPaymentAnalytics(analyticsRes.data);
+        setRecentPayments(recentRes.data.payments || []);
+      } catch (error) {
+        console.error('Failed to fetch payment data:', error);
+        setPaymentAnalytics({ totalRevenue: 0, successfulPayments: 0 });
+        setRecentPayments([]);
+      } finally {
+        setPaymentAnalyticsLoading(false);
+      }
+    };
+    fetchPaymentData();
   }, [activeTab]);
 
   const handleLogout = () => {
@@ -178,10 +207,30 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleRefundPayment = async (paymentId) => {
+    if (!window.confirm('Are you sure you want to process this refund? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setRefundingPaymentId(paymentId);
+      await api.put(`/payment/${paymentId}/refund`, { reason: 'Admin initiated refund' });
+      // Refresh recent payments
+      const recentRes = await api.get('/payment/admin/recent?limit=10');
+      setRecentPayments(recentRes.data.payments || []);
+      alert('Refund processed successfully');
+    } catch (error) {
+      alert('Failed to process refund: ' + (error.response?.data?.details || error.message));
+    } finally {
+      setRefundingPaymentId(null);
+    }
+  };
+
   const navItems = [
     { key: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { key: 'issueFine', label: t('issue_fine'), icon: FileText },
     { key: 'monitoring', label: 'Monitoring', icon: BarChart3 },
+    { key: 'payments', label: t('payment_analytics'), icon: CreditCard },
     { key: 'profile', label: t('profile'), icon: UserIcon },
   ];
 
@@ -398,6 +447,145 @@ const AdminDashboard = () => {
                         <Legend wrapperStyle={{ fontSize: '0.85rem', color: '#a6a195' }} />
                       </PieChart>
                     </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'payments' && (
+            <>
+              <div className="dashboard-header">
+                <div className="dashboard-eyebrow">Payment Processing</div>
+                <h1>Payment Analytics</h1>
+                <p>Monitor online payment transactions and manage refunds.</p>
+              </div>
+
+              <div className="stats-grid">
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">{t('revenue')}</div>
+                      <div className="stat-value" style={{ color: 'var(--color-sage-light)' }}>
+                        LKR {paymentAnalyticsLoading ? '...' : (paymentAnalytics.totalRevenue || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="stat-icon sage"><TrendingUp size={22} color="var(--color-sage-light)" /></div>
+                  </div>
+                </div>
+
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">{t('successful_payments')}</div>
+                      <div className="stat-value" style={{ color: 'var(--color-sage-light)' }}>
+                        {paymentAnalyticsLoading ? '...' : (paymentAnalytics.successfulPayments || 0)}
+                      </div>
+                    </div>
+                    <div className="stat-icon sage"><CheckCircle size={22} color="var(--color-sage-light)" /></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="panel-content glass-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h2 className="panel-title" style={{ margin: 0 }}>
+                    <FileText size={20} color="var(--color-gold)" /> {t('recent_payments')}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setPaymentAnalyticsLoading(true);
+                      api.get('/payment/admin/recent?limit=10').then(res => {
+                        setRecentPayments(res.data.payments || []);
+                        setPaymentAnalyticsLoading(false);
+                      }).catch(() => setPaymentAnalyticsLoading(false));
+                    }}
+                    className="btn btn-ghost"
+                    style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <RefreshCw size={16} /> Refresh
+                  </button>
+                </div>
+
+                {paymentAnalyticsLoading ? (
+                  <p style={{ color: 'var(--color-text-muted)' }}>{t('loading')}</p>
+                ) : recentPayments.length === 0 ? (
+                  <div className="empty-state">
+                    <CreditCard className="ti" style={{ width: 40, height: 40, opacity: 0.3, margin: '0 auto 1rem auto' }} />
+                    <p>No payments recorded yet.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      fontSize: '0.9rem'
+                    }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(201,164,92,0.3)' }}>
+                          <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-gold)' }}>Fine Ref</th>
+                          <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-gold)' }}>Citizen</th>
+                          <th style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-gold)' }}>Amount</th>
+                          <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-gold)' }}>Status</th>
+                          <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-gold)' }}>Date</th>
+                          <th style={{ padding: '1rem', textAlign: 'center', fontWeight: 600, color: 'var(--color-gold)' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentPayments.map((payment) => (
+                          <tr key={payment.id} style={{
+                            borderBottom: '1px solid rgba(201,164,92,0.15)',
+                            backgroundColor: 'rgba(201,164,92,0.03)',
+                            transition: 'background-color 0.2s'
+                          }}>
+                            <td style={{ padding: '1rem', color: '#d0d0d0', fontWeight: 500 }}>
+                              {payment.fineReference}
+                            </td>
+                            <td style={{ padding: '1rem', color: '#d0d0d0' }}>
+                              {payment.citizenName}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'right', color: '#c9a45c', fontWeight: 600 }}>
+                              LKR {payment.amount.toLocaleString()}
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '0.3rem 0.8rem',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                backgroundColor: payment.status === 'SUCCESS' ? 'rgba(92,138,106,0.3)' : payment.status === 'REFUNDED' ? 'rgba(201,164,92,0.3)' : 'rgba(193,80,46,0.3)',
+                                color: payment.status === 'SUCCESS' ? '#5c8a6a' : payment.status === 'REFUNDED' ? '#c9a45c' : '#c1502e'
+                              }}>
+                                {payment.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem', color: '#a6a195', fontSize: '0.85rem' }}>
+                              {new Date(payment.createdAt).toLocaleDateString()} {new Date(payment.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {payment.status === 'SUCCESS' ? (
+                                <button
+                                  onClick={() => handleRefundPayment(payment.id)}
+                                  disabled={refundingPaymentId === payment.id}
+                                  className="btn btn-danger"
+                                  style={{
+                                    padding: '0.4rem 0.8rem',
+                                    fontSize: '0.75rem',
+                                    opacity: refundingPaymentId === payment.id ? 0.6 : 1,
+                                    cursor: refundingPaymentId === payment.id ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {refundingPaymentId === payment.id ? 'Processing...' : t('refund')}
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>

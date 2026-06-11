@@ -3,6 +3,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
+import PaymentProcessing from './pages/PaymentProcessing';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancelled from './pages/PaymentCancelled';
 import ProtectedRoute from './routes/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -30,6 +33,33 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['USER']}>
               <UserDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/payment-processing" 
+          element={
+            <ProtectedRoute allowedRoles={['USER']}>
+              <PaymentProcessing />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/payment-success" 
+          element={
+            <ProtectedRoute allowedRoles={['USER']}>
+              <PaymentSuccess />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/payment-cancelled" 
+          element={
+            <ProtectedRoute allowedRoles={['USER']}>
+              <PaymentCancelled />
             </ProtectedRoute>
           } 
         />

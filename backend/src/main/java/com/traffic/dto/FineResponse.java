@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -22,4 +23,7 @@ public class FineResponse {
     private String status;
     private String bankName;
     private String bankAccountNumber;
+    private String paymentId; // Last payment ID
+    private LocalDateTime lastPaymentDate; // Last payment date
+    private String paymentStatus; // Last payment status
 }
