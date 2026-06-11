@@ -13,11 +13,12 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [data, setData] = useState({
-    message: t('loading'),
-    totalUsers: 0,
-    totalPayments: 0,
-    recentActivities: ''
-  });
+  totalUsers: 0,
+  totalFines: 0,
+  paidFines: 0,
+  pendingFines: 0,
+  totalRevenue: 0
+});
 
   const [profile, setProfile] = useState({
     fullName: '', email: '', age: '', gender: '', policeId: '', jobPosition: '', workStation: ''
@@ -36,6 +37,33 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+
+  const [fines] = useState([
+  {
+    id: 1,
+    ref: 'TF001',
+    citizen: 'John Silva',
+    nic: '200012345678',
+    amount: 5000,
+    status: 'PENDING'
+  },
+  {
+    id: 2,
+    ref: 'TF002',
+    citizen: 'Kamal Perera',
+    nic: '199812345679',
+    amount: 3000,
+    status: 'PAID'
+  },
+  {
+    id: 3,
+    ref: 'TF003',
+    citizen: 'Nimal Fernando',
+    nic: '199712345670',
+    amount: 7500,
+    status: 'PENDING'
+  }
+]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -157,12 +185,36 @@ const AdminDashboard = () => {
 
         {/* Row 2: Navigation controls */}
         <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', width: '100%'}}>
+         
+         <button
+           onClick={() => setActiveTab('monitoring')}
+            className={`btn ${activeTab === 'monitoring' ? 'btn-primary' : ''}`}
+      >
+            Monitoring
+            </button>
+         
+         
           <button onClick={() => setActiveTab('dashboard')} className={`btn ${activeTab === 'dashboard' ? 'btn-primary' : ''}`} style={{padding: '0.5rem 1rem', background: activeTab !== 'dashboard' ? 'transparent' : '', border: activeTab !== 'dashboard' ? '1px solid rgba(255,255,255,0.1)' : ''}}>
             {t('dashboard')}
           </button>
           <button onClick={() => setActiveTab('issueFine')} className={`btn ${activeTab === 'issueFine' ? 'btn-primary' : ''}`} style={{padding: '0.5rem 1rem', background: activeTab !== 'issueFine' ? 'transparent' : '', border: activeTab !== 'issueFine' ? '1px solid rgba(255,255,255,0.1)' : ''}}>
             <FileText size={18} style={{marginRight: '0.5rem'}} /> {t('issue_fine')}
           </button>
+
+<button
+  onClick={() => setActiveTab('manageFines')}
+  className={`btn ${activeTab === 'manageFines' ? 'btn-primary' : ''}`}
+  style={{
+    padding: '0.5rem 1rem',
+    background: activeTab !== 'manageFines' ? 'transparent' : '',
+    border: activeTab !== 'manageFines'
+      ? '1px solid rgba(255,255,255,0.1)'
+      : ''
+  }}
+>
+  Manage Fines
+</button>
+
           <button onClick={() => setActiveTab('profile')} className={`btn ${activeTab === 'profile' ? 'btn-primary' : ''}`} style={{padding: '0.5rem 1rem', background: activeTab !== 'profile' ? 'transparent' : '', border: activeTab !== 'profile' ? '1px solid rgba(255,255,255,0.1)' : ''}}>
             <UserIcon size={18} style={{marginRight: '0.5rem'}} /> {t('profile')}
           </button>
@@ -176,30 +228,66 @@ const AdminDashboard = () => {
         {activeTab === 'dashboard' && (
           <>
             <div className="dashboard-header">
-              <h1>{loading ? t('welcome_admin') : data.message}</h1>
+              <h1>{t('welcome_admin')}</h1>
               <p>{t('admin_overview')}</p>
             </div>
+           
             {/* ... stats grid ... */}
             <div className="stats-grid">
-              <div className="stat-card glass-panel" style={{borderLeft: '4px solid var(--primary-color)'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                  <div>
-                    <div className="stat-title">{t('total_users')}</div>
-                    <div className="stat-value">{loading ? '...' : data.totalUsers}</div>
-                  </div>
-                  <div style={{background: 'rgba(79, 70, 229, 0.2)', padding: '0.75rem', borderRadius: '12px'}}><Users size={24} color="var(--primary-color)" /></div>
-                </div>
-              </div>
-              <div className="stat-card glass-panel" style={{borderLeft: '4px solid var(--success-color)'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                  <div>
-                    <div className="stat-title">{t('total_payments')}</div>
-                    <div className="stat-value">${loading ? '...' : data.totalPayments.toLocaleString()}</div>
-                  </div>
-                  <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '0.75rem', borderRadius: '12px'}}><CreditCard size={24} color="var(--success-color)" /></div>
-                </div>
-              </div>
-            </div>
+
+  <div className="stat-card glass-panel" style={{borderLeft:'4px solid var(--primary-color)'}}>
+    <div style={{display:'flex',justifyContent:'space-between'}}>
+      <div>
+        <div className="stat-title">Total Users</div>
+        <div className="stat-value">{loading ? '...' : data.totalUsers}</div>
+      </div>
+      <Users size={24}/>
+    </div>
+  </div>
+
+  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #f59e0b'}}>
+    <div style={{display:'flex',justifyContent:'space-between'}}>
+      <div>
+        <div className="stat-title">Total Fines</div>
+        <div className="stat-value">{loading ? '...' : data.totalFines}</div>
+      </div>
+      <FileText size={24}/>
+    </div>
+  </div>
+
+  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #10b981'}}>
+    <div style={{display:'flex',justifyContent:'space-between'}}>
+      <div>
+        <div className="stat-title">Paid Fines</div>
+        <div className="stat-value">{loading ? '...' : data.paidFines}</div>
+      </div>
+      <CreditCard size={24}/>
+    </div>
+  </div>
+
+  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #ef4444'}}>
+    <div style={{display:'flex',justifyContent:'space-between'}}>
+      <div>
+        <div className="stat-title">Pending Fines</div>
+        <div className="stat-value">{loading ? '...' : data.pendingFines}</div>
+      </div>
+      <Activity size={24}/>
+    </div>
+  </div>
+
+  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #22c55e'}}>
+    <div style={{display:'flex',justifyContent:'space-between'}}>
+      <div>
+        <div className="stat-title">Revenue (LKR)</div>
+        <div className="stat-value">
+          {loading ? '...' : Number(data.totalRevenue).toLocaleString()}
+        </div>
+      </div>
+      <CreditCard size={24}/>
+    </div>
+  </div>
+
+</div>
           </>
         )}
 
@@ -268,6 +356,66 @@ const AdminDashboard = () => {
             )}
           </div>
         )}
+
+        {activeTab === 'manageFines' && (
+  <div
+    className="glass-panel"
+    style={{
+      padding: '2rem',
+      maxWidth: '1100px',
+      margin: '0 auto'
+    }}
+  >
+    <h2 style={{ marginBottom: '1.5rem' }}>
+      Manage Fines
+    </h2>
+
+    <div style={{ overflowX: 'auto' }}>
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse'
+        }}
+      >
+        <thead>
+          <tr>
+            <th style={{ padding: '12px' }}>Reference</th>
+            <th style={{ padding: '12px' }}>Citizen</th>
+            <th style={{ padding: '12px' }}>NIC</th>
+            <th style={{ padding: '12px' }}>Amount</th>
+            <th style={{ padding: '12px' }}>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {fines.map((fine) => (
+            <tr key={fine.id}>
+              <td style={{ padding: '12px' }}>
+                {fine.ref}
+              </td>
+
+              <td style={{ padding: '12px' }}>
+                {fine.citizen}
+              </td>
+
+              <td style={{ padding: '12px' }}>
+                {fine.nic}
+              </td>
+
+              <td style={{ padding: '12px' }}>
+                LKR {fine.amount}
+              </td>
+
+              <td style={{ padding: '12px' }}>
+                {fine.status}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
         {activeTab === 'profile' && (
           <div className="panel-content glass-panel" style={{maxWidth: '800px', margin: '0 auto'}}>

@@ -5,12 +5,14 @@ D:\Software_Architecture-main\backend\src\main\java\com\traffic\controller\Admin
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\controller\AuthController.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\controller\DashboardController.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\controller\FineController.java
+D:\Software_Architecture-main\backend\src\main\java\com\traffic\controller\MonitoringController.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\controller\UserController.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\AuthRequest.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\AuthResponse.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\FineReasonDto.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\FineRequest.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\FineResponse.java
+D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\MonitoringStatsDto.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\RegisterRequest.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\dto\UserProfileDto.java
 D:\Software_Architecture-main\backend\src\main\java\com\traffic\entity\CitizenUser.java

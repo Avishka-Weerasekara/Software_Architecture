@@ -19,6 +19,8 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
@@ -36,6 +38,9 @@ public class AdminController {
             return ResponseEntity.badRequest().body("No citizen found with NIC: " + nic);
         }
     }
+
+
+
 
     @PostMapping("/fines")
     public ResponseEntity<FineResponse> issueFine(@RequestBody FineRequest request) {
