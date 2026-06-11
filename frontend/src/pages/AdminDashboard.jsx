@@ -1,24 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Users, CreditCard, Activity, ShieldCheck, User as UserIcon, Save, Search, Plus, Trash2, FileText } from 'lucide-react';
+import {
+  LayoutDashboard, Users, CreditCard, ShieldCheck, User as UserIcon,
+  Search, Plus, Trash2, FileText, BarChart3, MapPin
+} from 'lucide-react';
+import {
+  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
-import LanguageSelector from '../components/LanguageSelector';
+import Sidebar from '../components/Sidebar';
+
+// Palette used for chart series - matches the app's navy/gold/sage/terracotta theme
+const CHART_COLORS = ['#c9a45c', '#5c8a6a', '#c1502e', '#7896b3', '#9b7fc2', '#d6a04f'];
 
 const AdminDashboard = () => {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
-  
+
   const [data, setData] = useState({
-  totalUsers: 0,
-  totalFines: 0,
-  paidFines: 0,
-  pendingFines: 0,
-  totalRevenue: 0
-});
+    message: t('loading'),
+    totalUsers: 0,
+    totalPayments: 0,
+    recentActivities: ''
+  });
 
   const [profile, setProfile] = useState({
     fullName: '', email: '', age: '', gender: '', policeId: '', jobPosition: '', workStation: ''
@@ -34,36 +43,13 @@ const AdminDashboard = () => {
   });
   const [fineMessage, setFineMessage] = useState('');
 
+  // Monitoring states
+  const [monitoring, setMonitoring] = useState({ districtCollections: [], categoryBreakdown: [] });
+  const [monitoringLoading, setMonitoringLoading] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-
-  const [fines] = useState([
-  {
-    id: 1,
-    ref: 'TF001',
-    citizen: 'John Silva',
-    nic: '200012345678',
-    amount: 5000,
-    status: 'PENDING'
-  },
-  {
-    id: 2,
-    ref: 'TF002',
-    citizen: 'Kamal Perera',
-    nic: '199812345679',
-    amount: 3000,
-    status: 'PAID'
-  },
-  {
-    id: 3,
-    ref: 'TF003',
-    citizen: 'Nimal Fernando',
-    nic: '199712345670',
-    amount: 7500,
-    status: 'PENDING'
-  }
-]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,6 +67,30 @@ const AdminDashboard = () => {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'monitoring') return;
+
+    const fetchMonitoring = async () => {
+      setMonitoringLoading(true);
+      try {
+        // Expected shape:
+        // { districtCollections: [{ district, total }], categoryBreakdown: [{ category, total }] }
+        const res = await api.get('/admin/monitoring');
+        const payload = res.data || {};
+        setMonitoring({
+          districtCollections: Array.isArray(payload.districtCollections) ? payload.districtCollections : [],
+          categoryBreakdown: Array.isArray(payload.categoryBreakdown) ? payload.categoryBreakdown : []
+        });
+      } catch (error) {
+        console.error('Failed to fetch monitoring data:', error);
+        setMonitoring({ districtCollections: [], categoryBreakdown: [] });
+      } finally {
+        setMonitoringLoading(false);
+      }
+    };
+    fetchMonitoring();
+  }, [activeTab]);
 
   const handleLogout = () => {
     logout();
@@ -168,264 +178,241 @@ const AdminDashboard = () => {
     }
   };
 
+  const navItems = [
+    { key: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
+    { key: 'issueFine', label: t('issue_fine'), icon: FileText },
+    { key: 'monitoring', label: 'Monitoring', icon: BarChart3 },
+    { key: 'profile', label: t('profile'), icon: UserIcon },
+  ];
+
+  const districtTotal = (monitoring.districtCollections || []).reduce((acc, d) => acc + (d.total || 0), 0);
+
   return (
-    <div className="dashboard-layout">
-      <nav className="navbar glass-panel" style={{borderRadius: 0, borderTop: 0, borderLeft: 0, borderRight: 0, display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem'}}>
-        
-        {/* Row 1: Title in center, Exit button on right */}
-        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', position: 'relative'}}>
-          <div className="nav-brand" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.75rem'}}>
-            <ShieldCheck color="var(--primary-color)" size={32} />
-            <span>{t('app_title')}</span>
-          </div>
-          <button onClick={handleLogout} className="btn btn-danger" style={{position: 'absolute', right: 0, borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center'}} title={t('logout')}>
-            <LogOut size={18} />
-          </button>
-        </div>
+    <div className="app-shell">
+      <Sidebar
+        title="Officer console"
+        navItems={navItems}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogout={handleLogout}
+        logoutLabel={t('logout')}
+      />
 
-        {/* Row 2: Navigation controls */}
-        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', width: '100%'}}>
-         
-         <button
-           onClick={() => setActiveTab('monitoring')}
-            className={`btn ${activeTab === 'monitoring' ? 'btn-primary' : ''}`}
-      >
-            Monitoring
-            </button>
-         
-         
-          <button onClick={() => setActiveTab('dashboard')} className={`btn ${activeTab === 'dashboard' ? 'btn-primary' : ''}`} style={{padding: '0.5rem 1rem', background: activeTab !== 'dashboard' ? 'transparent' : '', border: activeTab !== 'dashboard' ? '1px solid rgba(255,255,255,0.1)' : ''}}>
-            {t('dashboard')}
-          </button>
-          <button onClick={() => setActiveTab('issueFine')} className={`btn ${activeTab === 'issueFine' ? 'btn-primary' : ''}`} style={{padding: '0.5rem 1rem', background: activeTab !== 'issueFine' ? 'transparent' : '', border: activeTab !== 'issueFine' ? '1px solid rgba(255,255,255,0.1)' : ''}}>
-            <FileText size={18} style={{marginRight: '0.5rem'}} /> {t('issue_fine')}
-          </button>
-
-<button
-  onClick={() => setActiveTab('manageFines')}
-  className={`btn ${activeTab === 'manageFines' ? 'btn-primary' : ''}`}
-  style={{
-    padding: '0.5rem 1rem',
-    background: activeTab !== 'manageFines' ? 'transparent' : '',
-    border: activeTab !== 'manageFines'
-      ? '1px solid rgba(255,255,255,0.1)'
-      : ''
-  }}
->
-  Manage Fines
-</button>
-
-          <button onClick={() => setActiveTab('profile')} className={`btn ${activeTab === 'profile' ? 'btn-primary' : ''}`} style={{padding: '0.5rem 1rem', background: activeTab !== 'profile' ? 'transparent' : '', border: activeTab !== 'profile' ? '1px solid rgba(255,255,255,0.1)' : ''}}>
-            <UserIcon size={18} style={{marginRight: '0.5rem'}} /> {t('profile')}
-          </button>
-          <div style={{width: '1px', height: '24px', background: 'rgba(255,255,255,0.2)', margin: '0 0.5rem'}}></div>
-          <LanguageSelector />
-        </div>
-
-      </nav>
-
-      <main className="dashboard-content">
-        {activeTab === 'dashboard' && (
-          <>
-            <div className="dashboard-header">
-              <h1>{t('welcome_admin')}</h1>
-              <p>{t('admin_overview')}</p>
-            </div>
-           
-            {/* ... stats grid ... */}
-            <div className="stats-grid">
-
-  <div className="stat-card glass-panel" style={{borderLeft:'4px solid var(--primary-color)'}}>
-    <div style={{display:'flex',justifyContent:'space-between'}}>
-      <div>
-        <div className="stat-title">Total Users</div>
-        <div className="stat-value">{loading ? '...' : data.totalUsers}</div>
-      </div>
-      <Users size={24}/>
-    </div>
-  </div>
-
-  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #f59e0b'}}>
-    <div style={{display:'flex',justifyContent:'space-between'}}>
-      <div>
-        <div className="stat-title">Total Fines</div>
-        <div className="stat-value">{loading ? '...' : data.totalFines}</div>
-      </div>
-      <FileText size={24}/>
-    </div>
-  </div>
-
-  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #10b981'}}>
-    <div style={{display:'flex',justifyContent:'space-between'}}>
-      <div>
-        <div className="stat-title">Paid Fines</div>
-        <div className="stat-value">{loading ? '...' : data.paidFines}</div>
-      </div>
-      <CreditCard size={24}/>
-    </div>
-  </div>
-
-  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #ef4444'}}>
-    <div style={{display:'flex',justifyContent:'space-between'}}>
-      <div>
-        <div className="stat-title">Pending Fines</div>
-        <div className="stat-value">{loading ? '...' : data.pendingFines}</div>
-      </div>
-      <Activity size={24}/>
-    </div>
-  </div>
-
-  <div className="stat-card glass-panel" style={{borderLeft:'4px solid #22c55e'}}>
-    <div style={{display:'flex',justifyContent:'space-between'}}>
-      <div>
-        <div className="stat-title">Revenue (LKR)</div>
-        <div className="stat-value">
-          {loading ? '...' : Number(data.totalRevenue).toLocaleString()}
-        </div>
-      </div>
-      <CreditCard size={24}/>
-    </div>
-  </div>
-
-</div>
-          </>
-        )}
-
-        {activeTab === 'issueFine' && (
-          <div className="panel-content glass-panel" style={{maxWidth: '900px', margin: '0 auto'}}>
-            <h2 style={{marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-              <FileText size={24} color="var(--primary-color)" /> {t('issue_fine')}
-            </h2>
-            
-            <form onSubmit={handleSearchNic} style={{display: 'flex', gap: '1rem', marginBottom: '2rem'}}>
-              <input type="text" className="input-field" placeholder={t('search_nic')} value={searchNic} onChange={(e) => setSearchNic(e.target.value)} style={{flex: 1}} />
-              <button type="submit" className="btn btn-primary"><Search size={18} style={{marginRight: '0.5rem'}} /> {t('search')}</button>
-            </form>
-
-            {searchError && <div style={{color: 'var(--danger-color)', marginBottom: '2rem'}}>{searchError}</div>}
-
-            {foundCitizen && (
-              <div style={{background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)'}}>
-                <h3 style={{marginBottom: '1rem', color: 'var(--primary-color)'}}>{t('citizen_found')}</h3>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem'}}>
-                  <div><strong style={{color: 'var(--text-muted)'}}>{t('full_name')}:</strong> {foundCitizen.fullName}</div>
-                  <div><strong style={{color: 'var(--text-muted)'}}>{t('nic')}:</strong> {foundCitizen.nic}</div>
-                  <div><strong style={{color: 'var(--text-muted)'}}>{t('address')}:</strong> {foundCitizen.address}</div>
-                  <div><strong style={{color: 'var(--text-muted)'}}>{t('telephone')}:</strong> {foundCitizen.telephone}</div>
-                </div>
-
-                <div style={{height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1.5rem 0'}}></div>
-
-                <form onSubmit={handleSubmitFine}>
-                  <div className="input-group" style={{marginBottom: '1.5rem'}}>
-                    <label>{t('location')}</label>
-                    <input type="text" className="input-field" placeholder="e.g. Galle Road, Colombo 03" value={fineForm.location} onChange={(e) => setFineForm({...fineForm, location: e.target.value})} required />
-                  </div>
-
-                  <label style={{display: 'block', marginBottom: '1rem'}}>{t('offenses')}</label>
-                  {fineForm.reasons.map((reason, index) => (
-                    <div key={index} style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
-                      <input type="text" className="input-field" placeholder={t('offense_reason')} value={reason.reason} onChange={(e) => handleReasonChange(index, 'reason', e.target.value)} style={{flex: 2}} required />
-                      <input type="number" className="input-field" placeholder={t('amount_lkr')} value={reason.amount} onChange={(e) => handleReasonChange(index, 'amount', e.target.value)} style={{flex: 1}} required />
-                      {fineForm.reasons.length > 1 && (
-                        <button type="button" onClick={() => handleRemoveReason(index)} className="btn btn-danger" style={{padding: '0 1rem'}}><Trash2 size={18} /></button>
-                      )}
-                    </div>
-                  ))}
-                  
-                  <button type="button" onClick={handleAddReason} className="btn" style={{background: 'rgba(255,255,255,0.1)', border: '1px dashed rgba(255,255,255,0.3)', width: '100%', marginBottom: '2rem'}}>
-                    <Plus size={18} style={{marginRight: '0.5rem'}} /> {t('add_reason')}
-                  </button>
-
-                  <div style={{background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
-                    <h3 style={{margin: 0}}>{t('total_fine')}:</h3>
-                    <h2 style={{margin: 0, color: 'var(--danger-color)'}}>LKR {calculateTotal().toLocaleString()}</h2>
-                  </div>
-
-                  {fineMessage && (
-                    <div style={{marginBottom: '1.5rem', padding: '1rem', background: fineMessage.includes('Success') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: fineMessage.includes('Success') ? 'var(--success-color)' : 'var(--danger-color)', borderRadius: '8px'}}>
-                      {fineMessage}
-                    </div>
-                  )}
-
-                  <button type="submit" className="btn btn-primary" style={{width: '100%'}} disabled={saving}>
-                    {saving ? t('processing') : t('submit_fine')}
-                  </button>
-                </form>
+      <div className="dashboard-layout">
+        <main className="dashboard-content">
+          {activeTab === 'dashboard' && (
+            <>
+              <div className="dashboard-header">
+                <div className="dashboard-eyebrow">Administration</div>
+                <h1>{loading ? t('welcome_admin') : data.message}</h1>
+                <p>{t('admin_overview')}</p>
               </div>
-            )}
-          </div>
-        )}
+              <div className="stats-grid">
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">{t('total_users')}</div>
+                      <div className="stat-value">{loading ? '...' : (data.totalUsers ?? 0)}</div>
+                    </div>
+                    <div className="stat-icon gold"><Users size={22} color="var(--color-gold)" /></div>
+                  </div>
+                </div>
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">{t('total_payments')}</div>
+                      <div className="stat-value">LKR {loading ? '...' : (data.totalPayments ?? 0).toLocaleString()}</div>
+                    </div>
+                    <div className="stat-icon sage"><CreditCard size={22} color="var(--color-sage-light)" /></div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
-        {activeTab === 'manageFines' && (
-  <div
-    className="glass-panel"
-    style={{
-      padding: '2rem',
-      maxWidth: '1100px',
-      margin: '0 auto'
-    }}
-  >
-    <h2 style={{ marginBottom: '1.5rem' }}>
-      Manage Fines
-    </h2>
+          {activeTab === 'issueFine' && (
+            <div className="panel-content glass-panel" style={{ maxWidth: '900px', margin: '0 auto' }}>
+              <h2 className="panel-title">
+                <FileText size={22} color="var(--color-gold)" /> {t('issue_fine')}
+              </h2>
 
-    <div style={{ overflowX: 'auto' }}>
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse'
-        }}
-      >
-        <thead>
-          <tr>
-            <th style={{ padding: '12px' }}>Reference</th>
-            <th style={{ padding: '12px' }}>Citizen</th>
-            <th style={{ padding: '12px' }}>NIC</th>
-            <th style={{ padding: '12px' }}>Amount</th>
-            <th style={{ padding: '12px' }}>Status</th>
-          </tr>
-        </thead>
+              <form onSubmit={handleSearchNic} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                <input type="text" className="input-field" placeholder={t('search_nic')} value={searchNic} onChange={(e) => setSearchNic(e.target.value)} style={{ flex: 1 }} />
+                <button type="submit" className="btn btn-primary"><Search size={18} /> {t('search')}</button>
+              </form>
 
-        <tbody>
-          {fines.map((fine) => (
-            <tr key={fine.id}>
-              <td style={{ padding: '12px' }}>
-                {fine.ref}
-              </td>
+              {searchError && <div className="feedback-banner error">{searchError}</div>}
 
-              <td style={{ padding: '12px' }}>
-                {fine.citizen}
-              </td>
+              {foundCitizen && (
+                <div className="citizen-result">
+                  <h3 className="section-title">{t('citizen_found')}</h3>
+                  <div className="citizen-grid">
+                    <div><strong>{t('full_name')}:</strong> {foundCitizen.fullName}</div>
+                    <div><strong>{t('nic')}:</strong> {foundCitizen.nic}</div>
+                    <div><strong>{t('address')}:</strong> {foundCitizen.address}</div>
+                    <div><strong>{t('telephone')}:</strong> {foundCitizen.telephone}</div>
+                  </div>
 
-              <td style={{ padding: '12px' }}>
-                {fine.nic}
-              </td>
+                  <div className="divider"></div>
 
-              <td style={{ padding: '12px' }}>
-                LKR {fine.amount}
-              </td>
+                  <form onSubmit={handleSubmitFine}>
+                    <div className="input-group">
+                      <label>{t('location')}</label>
+                      <input type="text" className="input-field" placeholder="e.g. Galle Road, Colombo 03" value={fineForm.location} onChange={(e) => setFineForm({ ...fineForm, location: e.target.value })} required />
+                    </div>
 
-              <td style={{ padding: '12px' }}>
-                {fine.status}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
+                    <label style={{ display: 'block', marginBottom: '1rem', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>{t('offenses')}</label>
+                    {fineForm.reasons.map((reason, index) => (
+                      <div key={index} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                        <input type="text" className="input-field" placeholder={t('offense_reason')} value={reason.reason} onChange={(e) => handleReasonChange(index, 'reason', e.target.value)} style={{ flex: 2 }} required />
+                        <input type="number" className="input-field" placeholder={t('amount_lkr')} value={reason.amount} onChange={(e) => handleReasonChange(index, 'amount', e.target.value)} style={{ flex: 1 }} required />
+                        {fineForm.reasons.length > 1 && (
+                          <button type="button" onClick={() => handleRemoveReason(index)} className="btn btn-danger" style={{ padding: '0 1rem' }}><Trash2 size={18} /></button>
+                        )}
+                      </div>
+                    ))}
 
-        {activeTab === 'profile' && (
-          <div className="panel-content glass-panel" style={{maxWidth: '800px', margin: '0 auto'}}>
-            <h2 style={{marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-              <UserIcon size={24} color="var(--primary-color)" /> {t('profile')}
-            </h2>
-            <form onSubmit={handleSaveProfile}>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
+                    <button type="button" onClick={handleAddReason} className="btn btn-ghost" style={{ width: '100%', marginBottom: '2rem' }}>
+                      <Plus size={18} /> {t('add_reason')}
+                    </button>
+
+                    <div className="total-banner">
+                      <h3>{t('total_fine')}</h3>
+                      <span className="amount">LKR {calculateTotal().toLocaleString()}</span>
+                    </div>
+
+                    {fineMessage && (
+                      <div className={`feedback-banner ${fineMessage.includes('Success') ? 'success' : 'error'}`}>
+                        {fineMessage}
+                      </div>
+                    )}
+
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={saving}>
+                      {saving ? t('processing') : t('submit_fine')}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'monitoring' && (
+            <>
+              <div className="dashboard-header">
+                <div className="dashboard-eyebrow">Nationwide oversight</div>
+                <h1>Collections monitoring</h1>
+                <p>District-wise totals and fine category breakdown across all stations.</p>
+              </div>
+
+              <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">Total collected</div>
+                      <div className="stat-value">LKR {monitoringLoading ? '...' : districtTotal.toLocaleString()}</div>
+                    </div>
+                    <div className="stat-icon gold"><CreditCard size={22} color="var(--color-gold)" /></div>
+                  </div>
+                </div>
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">Districts reporting</div>
+                      <div className="stat-value">{monitoringLoading ? '...' : monitoring.districtCollections.length}</div>
+                    </div>
+                    <div className="stat-icon sage"><MapPin size={22} color="var(--color-sage-light)" /></div>
+                  </div>
+                </div>
+                <div className="stat-card glass-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="stat-title">Fine categories</div>
+                      <div className="stat-value">{monitoringLoading ? '...' : monitoring.categoryBreakdown.length}</div>
+                    </div>
+                    <div className="stat-icon terracotta"><BarChart3 size={22} color="var(--color-terracotta-light)" /></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="panel-content glass-panel">
+                <h2 className="panel-title">
+                  <MapPin size={20} color="var(--color-gold)" /> District-wise collections
+                </h2>
+                {monitoringLoading ? (
+                  <p style={{ color: 'var(--color-text-muted)' }}>{t('loading')}</p>
+                ) : monitoring.districtCollections.length === 0 ? (
+                  <div className="empty-state">
+                    <BarChart3 className="ti" style={{ width: 40, height: 40, opacity: 0.3, margin: '0 auto 1rem auto' }} />
+                    <p>No collection data available yet.</p>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monitoring.districtCollections} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                        <XAxis dataKey="district" stroke="#a6a195" fontSize={12} />
+                        <YAxis stroke="#a6a195" fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip
+                          contentStyle={{ background: '#15273f', border: '1px solid rgba(201,164,92,0.3)', borderRadius: 8, color: '#f5f1e8' }}
+                          formatter={(value) => [`LKR ${value.toLocaleString()}`, 'Collected']}
+                        />
+                        <Bar dataKey="total" fill="#c9a45c" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              <div className="panel-content glass-panel">
+                <h2 className="panel-title">
+                  <BarChart3 size={20} color="var(--color-gold)" /> Breakdown by fine category
+                </h2>
+                {monitoringLoading ? (
+                  <p style={{ color: 'var(--color-text-muted)' }}>{t('loading')}</p>
+                ) : monitoring.categoryBreakdown.length === 0 ? (
+                  <div className="empty-state">
+                    <BarChart3 className="ti" style={{ width: 40, height: 40, opacity: 0.3, margin: '0 auto 1rem auto' }} />
+                    <p>No category data available yet.</p>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={monitoring.categoryBreakdown}
+                          dataKey="total"
+                          nameKey="category"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={110}
+                          label={(entry) => entry.category}
+                        >
+                          {monitoring.categoryBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: '#15273f', border: '1px solid rgba(201,164,92,0.3)', borderRadius: 8, color: '#f5f1e8' }}
+                          formatter={(value) => [`LKR ${value.toLocaleString()}`, 'Collected']}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '0.85rem', color: '#a6a195' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="panel-content glass-panel" style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <h2 className="panel-title">
+                <UserIcon size={22} color="var(--color-gold)" /> {t('profile')}
+              </h2>
+              <form onSubmit={handleSaveProfile}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   <div className="input-group"><label>{t('full_name')}</label><input type="text" id="fullName" className="input-field" value={profile.fullName || ''} onChange={handleProfileChange} /></div>
-                  <div className="input-group"><label>{t('email')}</label><input type="email" id="email" className="input-field" value={profile.email || ''} disabled style={{opacity: 0.5}} /></div>
+                  <div className="input-group"><label>{t('email')}</label><input type="email" id="email" className="input-field" value={profile.email || ''} disabled style={{ opacity: 0.5 }} /></div>
                   <div className="input-group"><label>{t('age')}</label><input type="text" inputMode="numeric" id="age" className="input-field" value={profile.age || ''} onChange={(e) => { if (e.target.value === '' || /^[0-9\b]+$/.test(e.target.value)) handleProfileChange(e); }} /></div>
                   <div className="input-group">
                     <label>{t('gender')}</label>
@@ -434,17 +421,20 @@ const AdminDashboard = () => {
                       <option value="Female">{t('female')}</option>
                     </select>
                   </div>
-                  <div className="input-group" style={{gridColumn: '1 / span 2'}}><h3 style={{color: 'var(--text-muted)'}}>{t('police_assignment')}</h3></div>
+                  <div className="input-group" style={{ gridColumn: '1 / span 2' }}><h3 className="section-title">{t('police_assignment')}</h3></div>
                   <div className="input-group"><label>{t('police_id')}</label><input type="text" id="policeId" className="input-field" value={profile.policeId || ''} onChange={handleProfileChange} /></div>
                   <div className="input-group"><label>{t('job_position')}</label><input type="text" id="jobPosition" className="input-field" value={profile.jobPosition || ''} onChange={handleProfileChange} /></div>
-                  <div className="input-group" style={{gridColumn: '1 / span 2'}}><label>{t('work_station')}</label><input type="text" id="workStation" className="input-field" value={profile.workStation || ''} onChange={handleProfileChange} /></div>
+                  <div className="input-group" style={{ gridColumn: '1 / span 2' }}><label>{t('work_station')}</label><input type="text" id="workStation" className="input-field" value={profile.workStation || ''} onChange={handleProfileChange} /></div>
                 </div>
-                {message && <div style={{marginTop: '1.5rem', padding: '1rem', color: 'var(--success-color)'}}>{message}</div>}
-                <div style={{marginTop: '2rem', display: 'flex', justifyContent: 'flex-end'}}><button type="submit" className="btn btn-primary">{t('save_changes')}</button></div>
-            </form>
-          </div>
-        )}
-      </main>
+                {message && <div className="feedback-banner success">{message}</div>}
+                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? t('processing') : t('save_changes')}</button>
+                </div>
+              </form>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 };
