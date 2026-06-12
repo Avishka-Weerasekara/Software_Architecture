@@ -22,6 +22,9 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [payments, setPayments] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,6 +34,9 @@ const UserDashboard = () => {
 
         const finesRes = await api.get('/user/fines');
         setFines(finesRes.data);
+
+        const paymentsRes = await api.get('/payment/me');
+        setPayments(paymentsRes.data.payments || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -46,10 +52,14 @@ const UserDashboard = () => {
       const refreshData = async () => {
         setLoading(true);
         try {
-          const finesRes = await api.get('/user/fines');
+          const [finesRes, paymentsRes] = await Promise.all([
+            api.get('/user/fines'),
+            api.get('/payment/me')
+          ]);
           setFines(finesRes.data);
+          setPayments(paymentsRes.data.payments || []);
         } catch (error) {
-          console.error('Failed to refresh fines:', error);
+          console.error('Failed to refresh fines or payments:', error);
         } finally {
           setLoading(false);
         }
@@ -159,6 +169,110 @@ const UserDashboard = () => {
     printWindow.document.close();
   };
 
+  const handleDownloadReceipt = (fine) => {
+    const paymentRecord = payments.find((payment) => payment.fineId === fine.id && payment.status === 'SUCCESS');
+    if (!paymentRecord) {
+      window.alert(t('no_receipt_available'));
+      return;
+    }
+
+    const receiptFine = fines.find((f) => f.id === paymentRecord.fineId) || fine;
+    const paymentDate = paymentRecord.updatedAt || paymentRecord.createdAt || new Date().toISOString();
+    const paymentMethod = paymentRecord.paymentMethod || 'Card';
+    const receiptWindow = window.open('', '_blank');
+
+    receiptWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${receiptFine.referenceNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 30px; background: #f2f5f8; color: #132c40; }
+            .receipt { max-width: 700px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); }
+            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+            .header h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.03em; }
+            .details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+            .detail-item label { display: block; font-size: 0.8rem; color: #627d98; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
+            .detail-item span { display: block; font-size: 0.95rem; font-weight: 600; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .table th, .table td { text-align: left; padding: 14px 12px; border-bottom: 1px solid #e8eff5; }
+            .table th { color: #4b5d6a; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+            .summary { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e8eff5; }
+            .summary strong { font-size: 1rem; color: #132c40; }
+            .footer { margin-top: 32px; font-size: 0.9rem; color: #5e7488; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <div class="header">
+              <div>
+                <h1>Payment Receipt</h1>
+                <p style="margin:4px 0 0; color:#5e7488;">Traffic Fine Management System</p>
+              </div>
+              <div style="text-align:right;">
+                <p style="margin:0; font-size:0.9rem; color:#5e7488;">Receipt Date</p>
+                <strong>${new Date().toLocaleDateString()}</strong>
+              </div>
+            </div>
+
+            <div class="details">
+              <div class="detail-item"><label>Reference</label><span>${receiptFine.referenceNumber}</span></div>
+              <div class="detail-item"><label>Fine Status</label><span>${receiptFine.status}</span></div>
+              <div class="detail-item"><label>Paid Amount</label><span>LKR ${paymentRecord.amount.toLocaleString()}</span></div>
+              <div class="detail-item"><label>Payment Method</label><span>${paymentMethod}</span></div>
+              <div class="detail-item"><label>Paid On</label><span>${new Date(paymentDate).toLocaleString()}</span></div>
+              <div class="detail-item"><label>Session</label><span>${paymentRecord.paymentId || paymentRecord.id}</span></div>
+            </div>
+
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${fine.reasons.map((r) => `
+                  <tr>
+                    <td>${r.reason}</td>
+                    <td>LKR ${r.amount.toLocaleString()}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <div class="summary">
+              <strong>Total Paid</strong>
+              <strong>LKR ${fine.totalAmount.toLocaleString()}</strong>
+            </div>
+
+            <div class="footer">
+              Thank you for paying your traffic fine. Keep this receipt for your records.
+            </div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    receiptWindow.document.close();
+  };
+
+  const filteredFines = fines.filter((fine) => {
+    const matchesTerm = searchTerm.trim() === '' ||
+      fine.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fine.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fine.reasons.some((reason) => reason.reason.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'ALL' || fine.status === statusFilter;
+    return matchesTerm && matchesStatus;
+  });
+
+  const totalPaidCount = fines.filter((fine) => fine.status === 'PAID').length;
+  const totalPendingCount = fines.filter((fine) => fine.status === 'PENDING').length;
+  const totalPaidAmount = fines.filter((fine) => fine.status === 'PAID').reduce((sum, fine) => sum + (fine.totalAmount || 0), 0);
+  const totalOutstandingAmount = fines.filter((fine) => fine.status === 'PENDING').reduce((sum, fine) => sum + (fine.totalAmount || 0), 0);
+
+  const recentPayments = payments.slice(0, 5);
+
   const navItems = [
     { key: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { key: 'profile', label: t('profile'), icon: UserIcon },
@@ -215,6 +329,32 @@ const UserDashboard = () => {
                   {t('my_fines')}
                 </h2>
 
+                <div className="dashboard-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder={t('search_fines')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ flex: 1, minWidth: '220px' }}
+                  />
+                  <select
+                    className="input-field"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    style={{ width: '180px' }}
+                  >
+                    <option value="ALL">{t('all_statuses')}</option>
+                    <option value="PENDING">{t('pending')}</option>
+                    <option value="PAID">{t('paid')}</option>
+                  </select>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <span className="tag">{t('total_fines')}: {fines.length}</span>
+                    <span className="tag">{t('paid_count')}: {totalPaidCount}</span>
+                    <span className="tag">{t('pending_count')}: {totalPendingCount}</span>
+                  </div>
+                </div>
+
                 {loading ? (
                   <p style={{ color: 'var(--color-text-muted)' }}>{t('loading')}</p>
                 ) : fines.length === 0 ? (
@@ -222,9 +362,14 @@ const UserDashboard = () => {
                     <AlertCircle className="ti" style={{ width: 40, height: 40, opacity: 0.3, margin: '0 auto 1rem auto' }} />
                     <p>{t('no_fines')}</p>
                   </div>
+                ) : filteredFines.length === 0 ? (
+                  <div className="empty-state">
+                    <AlertCircle className="ti" style={{ width: 40, height: 40, opacity: 0.3, margin: '0 auto 1rem auto' }} />
+                    <p>{t('no_fines_match')}</p>
+                  </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {fines.map((fine, index) => (
+                    {filteredFines.map((fine, index) => (
                       <div key={index} className={`fine-card ${fine.status === 'PENDING' ? 'pending' : 'paid'}`}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '0.5rem' }}>
@@ -260,10 +405,61 @@ const UserDashboard = () => {
                               <Printer size={16} />
                               {t('download_slip')}
                             </button>
+                            {fine.status === 'PAID' && (
+                              <button onClick={() => handleDownloadReceipt(fine)} className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                                {t('download_receipt')}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+                {payments.length > 0 && (
+                  <div className="panel-content glass-panel" style={{ marginTop: '1.75rem' }}>
+                    <h2 className="panel-title">
+                      <CreditCard size={20} color="var(--color-gold)" /> {t('recent_payments')}
+                    </h2>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-gold)' }}>{t('fine_ref')}</th>
+                            <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--color-gold)' }}>{t('amount')}</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-gold)' }}>{t('status')}</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-gold)' }}>{t('date')}</th>
+                            <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-gold)' }}>{t('action')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recentPayments.map((payment) => {
+                      const paymentFine = fines.find((f) => f.id === payment.fineId);
+                      return (
+                        <tr key={payment.id} style={{ borderBottom: '1px solid rgba(201,164,92,0.15)' }}>
+                          <td style={{ padding: '1rem', color: '#d0d0d0' }}>{payment.fineReference}</td>
+                          <td style={{ padding: '1rem', textAlign: 'right', color: '#c9a45c', fontWeight: 600 }}>LKR {payment.amount.toLocaleString()}</td>
+                          <td style={{ padding: '1rem' }}>{payment.status}</td>
+                          <td style={{ padding: '1rem', color: '#a6a195' }}>{new Date(payment.updatedAt || payment.createdAt).toLocaleDateString()}</td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            {payment.status === 'SUCCESS' ? (
+                              <button
+                                onClick={() => handleDownloadReceipt(paymentFine || { id: payment.fineId, referenceNumber: payment.fineReference, status: payment.status, totalAmount: payment.amount, reasons: [] })}
+                                className="btn btn-secondary"
+                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                              >
+                                {t('download_receipt')}
+                              </button>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>

@@ -1,6 +1,7 @@
 package com.traffic.service;
 
 import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.traffic.dto.PaymentInitiateRequest;
@@ -18,14 +19,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
-import com.stripe.model.PaymentIntent;
-import com.stripe.exception.StripeException;
-import com.stripe.net.ApiResource;
 
 @Service
 @Slf4j
@@ -343,10 +341,23 @@ public class PaymentService {
         return payments.stream().map(payment -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", payment.getId().toString());
+            map.put("paymentId", payment.getId().toString());
             map.put("fineReference", payment.getFine().getReferenceNumber());
             map.put("fineId", payment.getFine().getId().toString());
+            map.put("fineStatus", payment.getFine().getStatus());
+            map.put("fineDate", payment.getFine().getFineDate());
+            map.put("fineTime", payment.getFine().getFineTime());
+            map.put("fineLocation", payment.getFine().getLocation());
+            map.put("fineReasons", payment.getFine().getReasons().stream().map(reason -> {
+                Map<String, Object> reasonMap = new HashMap<>();
+                reasonMap.put("reason", reason.getReason());
+                reasonMap.put("amount", reason.getAmount());
+                return reasonMap;
+            }).collect(Collectors.toList()));
             map.put("amount", payment.getAmount());
             map.put("status", payment.getStatus());
+            map.put("paymentMethod", payment.getPaymentMethod());
+            map.put("receiptUrl", payment.getReceiptUrl());
             map.put("stripeSessionId", payment.getStripeSessionId());
             map.put("stripePaymentIntentId", payment.getStripePaymentIntentId());
             map.put("createdAt", payment.getCreatedAt() != null ? payment.getCreatedAt().toString() : null);
