@@ -1,0 +1,18 @@
+import React from 'react';
+import { Pressable, SafeAreaView, Text, View } from 'react-native';
+import { theme } from '../theme/theme';
+
+const PaymentFailureScreen = ({ navigation }) => (
+  <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16, justifyContent: 'center' }}>
+    <View style={{ backgroundColor: theme.colors.backgroundElevated, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.warning, padding: 24, alignItems: 'center' }}>
+      <Text style={{ color: theme.colors.warning, fontSize: 28, marginBottom: 10 }}>⚠</Text>
+      <Text style={{ color: theme.colors.cream, fontFamily: theme.fonts.display, fontSize: 24, marginBottom: 10 }}>Payment Failed</Text>
+      <Text style={{ color: theme.colors.muted, textAlign: 'center', marginBottom: 16 }}>Your payment could not be completed. Please try again.</Text>
+      <Pressable onPress={() => navigation.goBack()} style={{ backgroundColor: theme.colors.gold, borderRadius: 10, padding: 12, minWidth: 200, alignItems: 'center' }}>
+        <Text style={{ color: theme.colors.background, fontFamily: theme.fonts.bodySemiBold }}>Go Back</Text>
+      </Pressable>
+    </View>
+  </SafeAreaView>
+);
+
+export default PaymentFailureScreen;

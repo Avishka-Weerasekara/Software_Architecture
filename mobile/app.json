@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Traffic Fine Mobile",
+    "slug": "traffic-fine-mobile",
+    "version": "1.0.0",
+    "scheme": "traffic-fine-mobile",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a1626"
+    },
+    "ios": {
+      "supportsTablet": true
+    }
+  }
+}
