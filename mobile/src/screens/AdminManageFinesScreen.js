@@ -13,8 +13,8 @@ const AdminManageFinesScreen = () => {
 
   const onSubmit = async () => {
     const parsedAmount = Number(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than 0.' });
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > 1000000) {
+      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be between 1 and 1,000,000.' });
       return;
     }
 

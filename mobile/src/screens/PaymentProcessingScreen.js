@@ -69,8 +69,8 @@ const PaymentProcessingScreen = ({ navigation, route }) => {
               <Text style={{ color: theme.colors.cream, fontFamily: theme.fonts.bodySemiBold }}>Check Payment Status</Text>
             </Pressable>
 
-            <Pressable onPress={() => navigation.replace('PaymentFailure')} style={{ backgroundColor: theme.colors.warning, borderRadius: 10, padding: 12, alignItems: 'center' }}>
-              <Text style={{ color: theme.colors.cream, fontFamily: theme.fonts.bodySemiBold }}>Mark as Failed</Text>
+            <Pressable onPress={() => navigation.goBack()} style={{ backgroundColor: theme.colors.warning, borderRadius: 10, padding: 12, alignItems: 'center' }}>
+              <Text style={{ color: theme.colors.cream, fontFamily: theme.fonts.bodySemiBold }}>Go Back</Text>
             </Pressable>
           </>
         )}

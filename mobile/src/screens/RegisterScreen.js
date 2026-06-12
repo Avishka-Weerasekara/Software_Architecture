@@ -38,8 +38,8 @@ const RegisterScreen = () => {
 
   const onSubmit = async () => {
     const ageNumber = Number(state.age);
-    if (!Number.isFinite(ageNumber) || ageNumber <= 0) {
-      Toast.show({ type: 'error', text1: 'Invalid age', text2: 'Please enter a valid age.' });
+    if (!Number.isFinite(ageNumber) || ageNumber < 18 || ageNumber > 120) {
+      Toast.show({ type: 'error', text1: 'Invalid age', text2: 'Please enter an age between 18 and 120.' });
       return;
     }
     setLoading(true);
