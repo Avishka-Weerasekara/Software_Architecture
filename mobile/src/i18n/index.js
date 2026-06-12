@@ -71,7 +71,7 @@ const resources = {
       citizen_nic: 'පුරවැසි NIC',
       submit: 'යවන්න',
       go_back: 'ආපසු යන්න',
-      open_checkout: 'Checkout පිටුව විවෘත කරන්න'
+      open_checkout: 'ගෙවීම් පිටුව විවෘත කරන්න'
     },
   },
   ta: {
@@ -107,7 +107,7 @@ const resources = {
       citizen_nic: 'குடிமகன் NIC',
       submit: 'சமர்ப்பிக்க',
       go_back: 'பின்செல்',
-      open_checkout: 'Checkout பக்கத்தைத் திற'
+      open_checkout: 'கட்டணப் பக்கத்தைத் திற'
     },
   },
 };

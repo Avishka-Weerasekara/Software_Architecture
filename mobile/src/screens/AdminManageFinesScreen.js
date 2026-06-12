@@ -40,9 +40,9 @@ const AdminManageFinesScreen = () => {
           ['Location', location, setLocation, 'default'],
           ['Reason', reason, setReason, 'default'],
           ['Amount', amount, setAmount, 'numeric'],
-        ].map(([label, value, setter, keyboardType]) => (
-          <React.Fragment key={label}>
-            <Text key={`${label}-label`} style={{ color: theme.colors.muted, marginTop: 6 }}>{label}</Text>
+        ].map(([label, value, setter, keyboardType], index) => (
+          <React.Fragment key={index}>
+            <Text style={{ color: theme.colors.muted, marginTop: 6 }}>{label}</Text>
             <TextInput
               value={value}
               onChangeText={setter}

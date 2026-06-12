@@ -45,8 +45,8 @@ const UserPaymentsScreen = () => {
         {payments.length === 0 ? (
           <Text style={{ color: theme.colors.muted }}>No records found</Text>
         ) : (
-          payments.map((payment) => (
-            <View key={payment.id || payment.paymentId || `${payment.createdAt}-${payment.amount}`} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, padding: 14, marginBottom: 10 }}>
+          payments.map((payment, index) => (
+            <View key={payment.id || payment.paymentId || `${payment.createdAt || 'payment'}-${index}`} style={{ backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, padding: 14, marginBottom: 10 }}>
               <Text style={{ color: theme.colors.cream }}>LKR {Number(payment.amount || 0).toFixed(2)}</Text>
               <Text style={{ color: payment.status === 'SUCCESS' ? theme.colors.success : theme.colors.warning }}>{payment.status}</Text>
               <Text style={{ color: theme.colors.muted }}>{payment.createdAt || payment.updatedAt || '-'}</Text>
