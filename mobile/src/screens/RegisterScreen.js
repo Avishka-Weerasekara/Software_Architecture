@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme/theme';
 
@@ -30,12 +31,17 @@ const RegisterScreen = () => {
   const payload = useMemo(
     () => ({
       ...state,
-      age: Number(state.age) || 0,
+      age: Number(state.age),
     }),
     [state],
   );
 
   const onSubmit = async () => {
+    const ageNumber = Number(state.age);
+    if (!Number.isFinite(ageNumber) || ageNumber <= 0) {
+      Toast.show({ type: 'error', text1: 'Invalid age', text2: 'Please enter a valid age.' });
+      return;
+    }
     setLoading(true);
     await register(payload);
     setLoading(false);

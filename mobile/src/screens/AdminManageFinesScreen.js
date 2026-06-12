@@ -12,12 +12,18 @@ const AdminManageFinesScreen = () => {
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async () => {
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than 0.' });
+      return;
+    }
+
     setLoading(true);
     try {
       await apiService.issueFine({
         citizenNic,
         location,
-        reasons: [{ reason, amount: Number(amount || 0) }],
+        reasons: [{ reason, amount: parsedAmount }],
       });
       Toast.show({ type: 'success', text1: 'Fine issued successfully' });
       setCitizenNic('');

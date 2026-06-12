@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { Buffer } from 'buffer';
 import { apiService, setAuthToken } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -9,6 +10,24 @@ const KEYS = {
   token: 'token',
   role: 'role',
   email: 'email',
+};
+
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = Buffer.from(base64, 'base64').toString('utf-8');
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+};
+
+const isTokenValid = (token) => {
+  const payload = parseJwt(token);
+  if (!payload?.exp) return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return payload.exp > nowSeconds;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -24,9 +43,15 @@ export const AuthProvider = ({ children }) => {
           AsyncStorage.getItem(KEYS.email),
         ]);
 
-        if (token && role && email) {
+        if (token && role && email && isTokenValid(token)) {
           setAuthToken(token);
           setUser({ token, role, email });
+        } else if (token || role || email) {
+          await Promise.all([
+            AsyncStorage.removeItem(KEYS.token),
+            AsyncStorage.removeItem(KEYS.role),
+            AsyncStorage.removeItem(KEYS.email),
+          ]);
         }
       } finally {
         setLoading(false);

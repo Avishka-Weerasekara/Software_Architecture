@@ -3,6 +3,7 @@
     "name": "Traffic Fine Mobile",
     "slug": "traffic-fine-mobile",
     "version": "1.0.0",
+    "scheme": "traffic-fine-mobile",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",

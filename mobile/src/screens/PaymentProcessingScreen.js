@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, SafeAreaView, Text, View } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import Toast from 'react-native-toast-message';
 import { apiService } from '../services/api';
 import { theme } from '../theme/theme';
@@ -13,7 +14,8 @@ const PaymentProcessingScreen = ({ navigation, route }) => {
   useEffect(() => {
     const processPayment = async () => {
       try {
-        const { data } = await apiService.initiatePayment({ fineId, returnUrl: 'traffic-fine-mobile' });
+        const returnUrl = ExpoLinking.createURL('payment');
+        const { data } = await apiService.initiatePayment({ fineId, returnUrl });
         setCheckoutUrl(data.checkoutSessionUrl || '');
         setSessionId(data.sessionId || '');
       } catch (error) {
