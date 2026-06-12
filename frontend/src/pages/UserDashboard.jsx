@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LayoutDashboard, FileText, AlertCircle, CreditCard, User as UserIcon, Printer, Car } from 'lucide-react';
 import api from '../services/api';
@@ -10,6 +10,7 @@ const UserDashboard = () => {
   const { t } = useTranslation();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const [fines, setFines] = useState([]);
@@ -39,6 +40,24 @@ const UserDashboard = () => {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (location.state && location.state.refresh) {
+      const refreshData = async () => {
+        setLoading(true);
+        try {
+          const finesRes = await api.get('/user/fines');
+          setFines(finesRes.data);
+        } catch (error) {
+          console.error('Failed to refresh fines:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      refreshData();
+      navigate(location.pathname, { replace: true, state: { ...location.state, refresh: false } });
+    }
+  }, [location, navigate]);
 
   const handleLogout = () => {
     logout();

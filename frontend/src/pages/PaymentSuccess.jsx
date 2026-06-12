@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, FileText } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import '../index.css';
@@ -9,8 +9,8 @@ const PaymentSuccess = () => {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
@@ -21,9 +21,40 @@ const PaymentSuccess = () => {
           return;
         }
 
-        // You might need to create an endpoint to get payment details by session ID
-        // For now, we'll just show a generic success message
+        // First attempt: ask backend to synchronously refresh status from Stripe (helps local dev without webhooks)
+        try {
+          await api.get(`/payment/session/${encodeURIComponent(sessionId)}/refresh`);
+        } catch (refreshErr) {
+          // Non-fatal: refresh may fail if Stripe not reachable or session not found yet
+        }
+
+        // Poll backend for payment processing result (webhook may be async)
+        const maxAttempts = 15; // ~30 seconds
+        const delayMs = 2000;
+        let attempt = 0;
+        let processed = false;
+
+        while (attempt < maxAttempts && !processed) {
+          try {
+            const res = await api.get(`/payment/session/${encodeURIComponent(sessionId)}`);
+            if (res?.data?.status === 'SUCCESS') {
+              processed = true;
+              break;
+            }
+          } catch (pollErr) {
+            // ignore 404 while webhook hasn't created payment record yet
+          }
+          attempt++;
+          await new Promise(r => setTimeout(r, delayMs));
+        }
+
         setLoading(false);
+
+        if (processed) {
+          // Navigate immediately to dashboard so it can refresh
+          navigate('/user/dashboard', { state: { refresh: true }, replace: true });
+        }
+        // If not processed yet, keep showing the page and allow manual return
       } catch (error) {
         console.error('Failed to fetch payment details:', error);
         setLoading(false);
@@ -32,6 +63,23 @@ const PaymentSuccess = () => {
 
     fetchPaymentDetails();
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setInterval(() => {
+        setCountdown((value) => {
+          if (value <= 1) {
+            clearInterval(timer);
+            navigate('/user/dashboard', { state: { refresh: true }, replace: true });
+            return 0;
+          }
+          return value - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [loading, navigate]);
 
   return (
     <div style={{
@@ -106,7 +154,7 @@ const PaymentSuccess = () => {
         </p>
 
         <button
-          onClick={() => navigate('/user/dashboard')}
+          onClick={() => navigate('/user/dashboard', { state: { refresh: true }, replace: true })}
           style={{
             background: 'linear-gradient(135deg, #c9a45c 0%, #d4b574 100%)',
             color: '#1a2332',
@@ -122,7 +170,7 @@ const PaymentSuccess = () => {
           onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
           onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
         >
-          {t('return_to_dashboard')}
+          {t('return_to_dashboard')} ({countdown}s)
         </button>
       </div>
     </div>

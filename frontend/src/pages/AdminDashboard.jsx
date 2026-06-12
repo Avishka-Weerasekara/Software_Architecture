@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, CreditCard, ShieldCheck, User as UserIcon,
@@ -20,6 +20,7 @@ const AdminDashboard = () => {
   const { t } = useTranslation();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const [data, setData] = useState({
@@ -73,6 +74,24 @@ const AdminDashboard = () => {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (location.state && location.state.refresh) {
+      const refreshDashboard = async () => {
+        setLoading(true);
+        try {
+          const dashRes = await api.get('/admin/dashboard');
+          setData(dashRes.data);
+        } catch (error) {
+          console.error('Failed to refresh admin dashboard:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      refreshDashboard();
+      navigate(location.pathname, { replace: true, state: { ...location.state, refresh: false } });
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     if (activeTab !== 'monitoring') return;
@@ -199,6 +218,23 @@ const AdminDashboard = () => {
       setFineForm({ location: '', reasons: [{ reason: '', amount: '' }] });
       setFoundCitizen(null);
       setSearchNic('');
+      // Refresh dashboard counts and monitoring data so UI reflects new fine immediately
+      try {
+        const dashRes = await api.get('/admin/dashboard');
+        setData(dashRes.data);
+      } catch (e) {
+        console.warn('Failed to refresh dashboard after issuing fine', e);
+      }
+      try {
+        const monRes = await api.get('/admin/monitoring');
+        const payload = monRes.data || {};
+        setMonitoring({
+          districtCollections: Array.isArray(payload.districtCollections) ? payload.districtCollections : [],
+          categoryBreakdown: Array.isArray(payload.categoryBreakdown) ? payload.categoryBreakdown : []
+        });
+      } catch (e) {
+        // non-fatal
+      }
       setTimeout(() => setFineMessage(''), 5000);
     } catch (error) {
       setFineMessage('Error: Failed to issue fine.');
@@ -253,7 +289,7 @@ const AdminDashboard = () => {
             <>
               <div className="dashboard-header">
                 <div className="dashboard-eyebrow">Administration</div>
-                <h1>{loading ? t('welcome_admin') : data.message}</h1>
+                <h1>{t('welcome_admin')}</h1>
                 <p>{t('admin_overview')}</p>
               </div>
               <div className="stats-grid">
@@ -270,7 +306,7 @@ const AdminDashboard = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div className="stat-title">{t('total_payments')}</div>
-                      <div className="stat-value">LKR {loading ? '...' : (data.totalPayments ?? 0).toLocaleString()}</div>
+                      <div className="stat-value">LKR {loading ? '...' : ((data.totalRevenue ?? 0)).toLocaleString()}</div>
                     </div>
                     <div className="stat-icon sage"><CreditCard size={22} color="var(--color-sage-light)" /></div>
                   </div>

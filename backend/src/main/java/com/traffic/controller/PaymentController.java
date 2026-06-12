@@ -159,6 +159,92 @@ public class PaymentController {
     }
 
     /**
+     * Get payment status by Stripe Checkout session ID
+     * This is used by the frontend to poll for completion after redirect
+     */
+    @GetMapping("/session/{sessionId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> getPaymentStatusBySession(@PathVariable String sessionId) {
+        try {
+            PaymentStatusResponse response = paymentService.getPaymentStatusBySession(sessionId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching payment by session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Refresh payment status by querying Stripe directly (useful for local testing when webhooks are not configured)
+     */
+    @GetMapping("/session/{sessionId}/refresh")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> refreshPaymentBySession(@PathVariable String sessionId) {
+        try {
+            PaymentStatusResponse response = paymentService.refreshPaymentFromStripe(sessionId);
+            return ResponseEntity.ok(response);
+        } catch (com.stripe.exception.StripeException e) {
+            log.error("Stripe API error while refreshing session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Stripe API error", "details", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error refreshing payment by session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Get payments for the currently authenticated user (citizen)
+     */
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> getMyPayments() {
+        try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            var user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+            var citizenId = user.getId();
+            var payments = paymentService.getPaymentsForCitizen(citizenId);
+            return ResponseEntity.ok(Map.of("payments", payments));
+        } catch (Exception e) {
+            log.error("Error fetching payments for current user: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // --- Temporary debug endpoints (UNPROTECTED) - remove for production ---
+    @GetMapping("/debug/findByAmount/{amount}")
+    public ResponseEntity<?> debugFindByAmount(@PathVariable Double amount) {
+        try {
+            var payments = paymentService.getRecentPayments(100);
+            var matched = payments.stream().filter(p -> {
+                try {
+                    Double a = Double.parseDouble(String.valueOf(p.get("amount")));
+                    return Double.compare(a, amount) == 0;
+                } catch (Exception e) {
+                    return false;
+                }
+            }).toList();
+            return ResponseEntity.ok(Map.of("matches", matched));
+        } catch (Exception e) {
+            log.error("Debug findByAmount error: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/debug/refreshSession/{sessionId}")
+    public ResponseEntity<?> debugRefreshSession(@PathVariable String sessionId) {
+        try {
+            PaymentStatusResponse response = paymentService.refreshPaymentFromStripe(sessionId);
+            return ResponseEntity.ok(response);
+        } catch (com.stripe.exception.StripeException e) {
+            log.error("Stripe API error while debug refreshing session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Stripe API error", "details", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error debug refreshing payment by session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Process refund (admin-only)
      */
     @PutMapping("/{paymentId}/refund")

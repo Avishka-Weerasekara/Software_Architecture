@@ -97,3 +97,5 @@ dist/
 # Environment files
 .env
 .env.*
+
+process-info.txt

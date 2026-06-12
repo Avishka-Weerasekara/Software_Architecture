@@ -15,7 +15,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByStripePaymentIntentId(String stripePaymentIntentId);
 
-    Optional<Payment> findByFineId(UUID fineId);
+    // Return the most recent payment for a fine
+    Optional<Payment> findTopByFineIdOrderByCreatedAtDesc(UUID fineId);
 
     List<Payment> findByCitizenIdOrderByCreatedAtDesc(UUID citizenId);
 

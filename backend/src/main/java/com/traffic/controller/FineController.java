@@ -38,7 +38,7 @@ public class FineController {
         
         List<FineResponse> responses = fines.stream().map(fine -> {
             // Fetch last payment for this fine
-            Optional<Payment> lastPayment = paymentRepository.findByFineId(fine.getId());
+            Optional<Payment> lastPayment = paymentRepository.findTopByFineIdOrderByCreatedAtDesc(fine.getId());
             
             FineResponse.FineResponseBuilder builder = FineResponse.builder()
                     .id(fine.getId().toString())

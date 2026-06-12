@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.security.MessageDigest;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,7 +70,22 @@ public class JwtUtil {
     }
 
     private Key getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(secret);
+        } catch (Exception ignored) {
+            keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        if (keyBytes.length < 32) {
+            try {
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                keyBytes = digest.digest(keyBytes);
+            } catch (Exception e) {
+                throw new RuntimeException("Unable to derive a secure JWT key", e);
+            }
+        }
+
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import com.stripe.model.PaymentIntent;
+import com.stripe.exception.StripeException;
+import com.stripe.net.ApiResource;
 
 @Service
 @Slf4j
@@ -60,7 +63,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Create Stripe Checkout Session
-        Session stripeSession = createStripeCheckoutSession(fine, citizen);
+        Session stripeSession = createStripeCheckoutSession(fine, citizen, request);
 
         // Create Payment entity
         Payment payment = Payment.builder()
@@ -74,22 +77,36 @@ public class PaymentService {
                 .build();
 
         payment = paymentRepository.save(payment);
+        // Link the payment to the fine for quick lookup
+        Fine fineToUpdate = payment.getFine();
+        fineToUpdate.setLastPaymentId(payment.getId());
+        fineRepository.save(fineToUpdate);
 
         return PaymentInitiateResponse.builder()
-                .paymentId(payment.getId().toString())
-                .checkoutSessionUrl(stripeSession.getUrl())
-                .sessionId(stripeSession.getId())
-                .build();
+            .paymentId(payment.getId().toString())
+            .checkoutSessionUrl(stripeSession.getUrl())
+            .sessionId(stripeSession.getId())
+            .build();
     }
 
     /**
      * Create Stripe Checkout Session
      */
-    private Session createStripeCheckoutSession(Fine fine, CitizenUser citizen) throws StripeException {
+    private Session createStripeCheckoutSession(Fine fine, CitizenUser citizen, PaymentInitiateRequest request) throws StripeException {
+        String returnUrl = request.getReturnUrl();
+        String successRedirect = successUrl;
+        String cancelRedirect = cancelUrl;
+
+        if (returnUrl != null && !returnUrl.isBlank()) {
+            String baseUrl = returnUrl.replaceAll("/+$", "");
+            successRedirect = baseUrl + "/payment-success?sessionId={CHECKOUT_SESSION_ID}";
+            cancelRedirect = baseUrl + "/payment-cancelled";
+        }
+
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(successUrl)
-                .setCancelUrl(cancelUrl)
+                .setSuccessUrl(successRedirect)
+                .setCancelUrl(cancelRedirect)
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setClientReferenceId(fine.getId().toString())
                 .addLineItem(
@@ -138,6 +155,8 @@ public class PaymentService {
         // Update Fine status to PAID
         Fine fine = payment.getFine();
         fine.setStatus("PAID");
+        // Ensure lastPaymentId points to this successful payment
+        fine.setLastPaymentId(payment.getId());
         fineRepository.save(fine);
 
         // Send SMS confirmation
@@ -201,6 +220,8 @@ public class PaymentService {
         // Revert Fine status to PENDING
         Fine fine = payment.getFine();
         fine.setStatus("PENDING");
+        // Clear last payment reference so UI shows no active payment
+        fine.setLastPaymentId(null);
         fineRepository.save(fine);
 
         // Send SMS notification
@@ -238,6 +259,23 @@ public class PaymentService {
                 .build();
     }
 
+        @Transactional(readOnly = true)
+        public PaymentStatusResponse getPaymentStatusBySession(String sessionId) {
+        Payment payment = paymentRepository.findByStripeSessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Payment not found for session: " + sessionId));
+
+        return PaymentStatusResponse.builder()
+            .paymentId(payment.getId().toString())
+            .fineId(payment.getFine().getId().toString())
+            .status(payment.getStatus())
+            .amount(payment.getAmount())
+            .currency(payment.getCurrency())
+            .transactionDate(payment.getUpdatedAt())
+            .receiptUrl(payment.getReceiptUrl())
+            .paymentMethod(payment.getPaymentMethod())
+            .build();
+        }
+
     /**
      * Get total revenue (paid payments)
      */
@@ -247,6 +285,25 @@ public class PaymentService {
                 .stream()
                 .mapToDouble(Payment::getAmount)
                 .sum();
+    }
+
+    @Transactional
+    public PaymentStatusResponse refreshPaymentFromStripe(String sessionId) throws StripeException {
+        // Attempt to retrieve the Stripe Session and the PaymentIntent to determine status
+        com.stripe.model.checkout.Session stripeSession = com.stripe.model.checkout.Session.retrieve(sessionId);
+        String paymentIntentId = stripeSession.getPaymentIntent();
+
+        if (paymentIntentId != null) {
+            PaymentIntent pi = PaymentIntent.retrieve(paymentIntentId);
+            String piStatus = pi.getStatus(); // e.g., 'succeeded'
+
+            if ("succeeded".equalsIgnoreCase(piStatus)) {
+                // If succeeded, ensure our DB reflects it
+                this.handlePaymentSuccess(sessionId, paymentIntentId);
+            }
+        }
+
+        return getPaymentStatusBySession(sessionId);
     }
 
     /**
@@ -278,5 +335,23 @@ public class PaymentService {
                     return map;
                 })
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getPaymentsForCitizen(UUID citizenId) {
+        var payments = paymentRepository.findByCitizenIdOrderByCreatedAtDesc(citizenId);
+        return payments.stream().map(payment -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", payment.getId().toString());
+            map.put("fineReference", payment.getFine().getReferenceNumber());
+            map.put("fineId", payment.getFine().getId().toString());
+            map.put("amount", payment.getAmount());
+            map.put("status", payment.getStatus());
+            map.put("stripeSessionId", payment.getStripeSessionId());
+            map.put("stripePaymentIntentId", payment.getStripePaymentIntentId());
+            map.put("createdAt", payment.getCreatedAt() != null ? payment.getCreatedAt().toString() : null);
+            map.put("updatedAt", payment.getUpdatedAt() != null ? payment.getUpdatedAt().toString() : null);
+            return map;
+        }).collect(Collectors.toList());
     }
 }
