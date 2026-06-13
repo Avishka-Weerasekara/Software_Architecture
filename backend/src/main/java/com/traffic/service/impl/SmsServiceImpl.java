@@ -25,7 +25,7 @@ public class SmsServiceImpl implements SmsService {
     @Override
     public void sendPaymentConfirmation(String phoneNumber, Double amount, String fineReference, String paymentId) {
         String message = String.format(
-            "Payment Confirmation: LKR %.2f paid for traffic fine %s. Transaction ID: %s. You will receive a digital receipt via email.",
+            "Payment Confirmation: LKR %.2f has been paid for traffic fine %s. Transaction ID: %s. If you did not authorize this payment, contact support immediately.",
             amount, fineReference, paymentId
         );
         sendSms(phoneNumber, message);

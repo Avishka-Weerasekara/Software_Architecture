@@ -157,17 +157,23 @@ public class PaymentService {
         fine.setLastPaymentId(payment.getId());
         fineRepository.save(fine);
 
-        // Send SMS confirmation
+        // Send SMS confirmation to the citizen's registered phone number
         try {
             CitizenUser citizen = payment.getCitizen();
-            smsService.sendPaymentConfirmation(
-                    citizen.getTelephone(),
-                    payment.getAmount(),
-                    fine.getReferenceNumber(),
-                    payment.getId().toString()
-            );
+            String phoneNumber = citizen != null ? citizen.getTelephone() : null;
+
+            if (phoneNumber == null || phoneNumber.isBlank()) {
+                log.warn("Citizen {} has no registered telephone number. Skipping SMS notification for payment {}.", citizen != null ? citizen.getId() : "unknown", payment.getId());
+            } else {
+                smsService.sendPaymentConfirmation(
+                        phoneNumber,
+                        payment.getAmount(),
+                        fine.getReferenceNumber(),
+                        payment.getId().toString()
+                );
+            }
         } catch (Exception e) {
-            log.error("Failed to send payment confirmation SMS: {}", e.getMessage());
+            log.error("Failed to send payment confirmation SMS: {}", e.getMessage(), e);
             // Don't fail the payment if SMS fails
         }
 
