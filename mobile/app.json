@@ -10,7 +10,17 @@
       "backgroundColor": "#0a1626"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.traffic.trafficfine.mobile"
+    },
+    "android": {
+      "package": "com.traffic.trafficfine.mobile"
+    },
+    "extra": {
+      "apiUrl": "http://localhost:8080/api",
+      "eas": {
+        "projectId": "497f930b-3874-4c4e-8fcf-9e7b6056161c"
+      }
     }
   }
 }
